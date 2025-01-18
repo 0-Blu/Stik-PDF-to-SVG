@@ -12,10 +12,19 @@
   <button id="startButton" disabled>Start</button>
   <button id="downloadButton" disabled>Download All</button>
   <div id="output"></div>
+  <h2>Debug Log</h2>
+  <textarea id="debugLog" rows="10" cols="50" readonly></textarea>
 
   <script>
     let uploadedFile = null;
     let svgElements = [];
+    const debugLog = document.getElementById('debugLog');
+
+    // Append message to the debug log
+    function logMessage(message) {
+      debugLog.value += message + '\n';
+      debugLog.scrollTop = debugLog.scrollHeight; // Auto-scroll to the latest log
+    }
 
     // Handle file upload
     document.getElementById('pdfInput').addEventListener('change', (event) => {
@@ -24,22 +33,28 @@
         document.getElementById('startButton').disabled = false;
         svgElements = []; // Reset SVG elements
         document.getElementById('output').innerHTML = ''; // Clear previous output
+        logMessage(`File "${uploadedFile.name}" loaded successfully.`);
       } else {
         alert('Please upload a valid PDF file.');
         document.getElementById('startButton').disabled = true;
+        logMessage('Invalid file uploaded. Please select a PDF.');
       }
     });
 
     // Handle Start button click
     document.getElementById('startButton').addEventListener('click', async () => {
       if (!uploadedFile) return;
+      logMessage('Starting PDF to SVG conversion...');
       const pdfData = new Uint8Array(await uploadedFile.arrayBuffer());
       const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+      logMessage(`PDF loaded successfully with ${pdf.numPages} pages.`);
+      
       const outputDiv = document.getElementById('output');
       outputDiv.innerHTML = ''; // Clear previous output
       svgElements = []; // Reset SVG elements
 
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        logMessage(`Processing page ${pageNum}...`);
         const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 1.5 });
 
@@ -54,14 +69,17 @@
 
         outputDiv.appendChild(svg);
         svgElements.push(svg.outerHTML);
+        logMessage(`Page ${pageNum} processed successfully.`);
       }
 
       document.getElementById('downloadButton').disabled = svgElements.length === 0;
+      logMessage('PDF to SVG conversion complete.');
     });
 
     // Handle Download button click
     document.getElementById('downloadButton').addEventListener('click', () => {
       if (!svgElements.length) return;
+      logMessage('Starting download of SVG files...');
       svgElements.forEach((svgContent, index) => {
         const blob = new Blob([svgContent], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
@@ -71,8 +89,9 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        logMessage(`Page ${index + 1} SVG downloaded.`);
       });
-      alert('SVG files have been downloaded.');
+      logMessage('All SVG files have been downloaded.');
     });
   </script>
 </body>
