@@ -14,95 +14,97 @@
   <div id="output"></div>
   <h2>Debug Log</h2>
   <textarea id="debugLog" rows="10" cols="50" readonly></textarea>
-<script>
-  let uploadedFile = null;
-  let svgElements = [];
-  const debugLog = document.getElementById('debugLog');
 
-  // Append message to the debug log
-  function logMessage(message) {
-    debugLog.value += message + '\n';
-    debugLog.scrollTop = debugLog.scrollHeight; // Auto-scroll to the latest log
-  }
+  <script>
+    let uploadedFile = null;
+    let svgElements = [];
+    const debugLog = document.getElementById('debugLog');
 
-  // Handle file upload
-  document.getElementById('pdfInput').addEventListener('change', (event) => {
-    uploadedFile = event.target.files[0];
-    if (uploadedFile && uploadedFile.type === 'application/pdf') {
-      document.getElementById('startButton').disabled = false;
-      svgElements = []; // Reset SVG elements
-      document.getElementById('output').innerHTML = ''; // Clear previous output
-      logMessage(`File "${uploadedFile.name}" loaded successfully.`);
-    } else {
-      alert('Please upload a valid PDF file.');
-      document.getElementById('startButton').disabled = true;
-      logMessage('Invalid file uploaded. Please select a PDF.');
-    }
-  });
-
-  // Handle Start button click
-  document.getElementById('startButton').addEventListener('click', async () => {
-    if (!uploadedFile) return;
-    logMessage('Starting PDF to SVG conversion...');
-    const pdfData = new Uint8Array(await uploadedFile.arrayBuffer());
-    let pdf;
-
-    try {
-      pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-      logMessage(`PDF loaded successfully with ${pdf.numPages} pages.`);
-    } catch (error) {
-      logMessage(`Error loading PDF: ${error.message}`);
-      return;
+    // Append message to the debug log
+    function logMessage(message) {
+      debugLog.value += message + '\n';
+      debugLog.scrollTop = debugLog.scrollHeight; // Auto-scroll to the latest log
     }
 
-    const outputDiv = document.getElementById('output');
-    outputDiv.innerHTML = ''; // Clear previous output
-    svgElements = []; // Reset SVG elements
-
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      try {
-        logMessage(`Processing page ${pageNum}...`);
-        const page = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 1.5 });
-
-        // Create SVG element
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', viewport.width);
-        svg.setAttribute('height', viewport.height);
-
-        const svgGfx = pdfjsLib.SVGGraphics(page.commonObjs, page.objs);
-        const svgElement = await svgGfx.getSVG(page.getOperatorList(), viewport);
-        svg.appendChild(svgElement);
-
-        outputDiv.appendChild(svg);
-        svgElements.push(svg.outerHTML);
-        logMessage(`Page ${pageNum} processed successfully.`);
-      } catch (error) {
-        logMessage(`Error processing page ${pageNum}: ${error.message}`);
+    // Handle file upload
+    document.getElementById('pdfInput').addEventListener('change', (event) => {
+      uploadedFile = event.target.files[0];
+      if (uploadedFile && uploadedFile.type === 'application/pdf') {
+        document.getElementById('startButton').disabled = false;
+        svgElements = []; // Reset SVG elements
+        document.getElementById('output').innerHTML = ''; // Clear previous output
+        logMessage(`File "${uploadedFile.name}" loaded successfully.`);
+      } else {
+        alert('Please upload a valid PDF file.');
+        document.getElementById('startButton').disabled = true;
+        logMessage('Invalid file uploaded. Please select a PDF.');
       }
-    }
-
-    document.getElementById('downloadButton').disabled = svgElements.length === 0;
-    logMessage('PDF to SVG conversion complete.');
-  });
-
-  // Handle Download button click
-  document.getElementById('downloadButton').addEventListener('click', () => {
-    if (!svgElements.length) return;
-    logMessage('Starting download of SVG files...');
-    svgElements.forEach((svgContent, index) => {
-      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `page-${index + 1}.svg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      logMessage(`Page ${index + 1} SVG downloaded.`);
     });
-    logMessage('All SVG files have been downloaded.');
-  });
-</script>
+
+    // Handle Start button click
+    document.getElementById('startButton').addEventListener('click', async () => {
+      if (!uploadedFile) return;
+      logMessage('Starting PDF to SVG conversion...');
+      const pdfData = new Uint8Array(await uploadedFile.arrayBuffer());
+      let pdf;
+
+      try {
+        pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+        logMessage(`PDF loaded successfully with ${pdf.numPages} pages.`);
+      } catch (error) {
+        logMessage(`Error loading PDF: ${error.message}`);
+        return;
+      }
+
+      const outputDiv = document.getElementById('output');
+      outputDiv.innerHTML = ''; // Clear previous output
+      svgElements = []; // Reset SVG elements
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        try {
+          logMessage(`Processing page ${pageNum}...`);
+          const page = await pdf.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 1.5 });
+
+          // Create SVG element
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('width', viewport.width);
+          svg.setAttribute('height', viewport.height);
+
+          // Correct instantiation of SVGGraphics
+          const svgGfx = new pdfjsLib.SVGGraphics(page.commonObjs, page.objs);
+          const svgElement = await svgGfx.getSVG(page.getOperatorList(), viewport);
+          svg.appendChild(svgElement);
+
+          outputDiv.appendChild(svg);
+          svgElements.push(svg.outerHTML);
+          logMessage(`Page ${pageNum} processed successfully.`);
+        } catch (error) {
+          logMessage(`Error processing page ${pageNum}: ${error.message}`);
+        }
+      }
+
+      document.getElementById('downloadButton').disabled = svgElements.length === 0;
+      logMessage('PDF to SVG conversion complete.');
+    });
+
+    // Handle Download button click
+    document.getElementById('downloadButton').addEventListener('click', () => {
+      if (!svgElements.length) return;
+      logMessage('Starting download of SVG files...');
+      svgElements.forEach((svgContent, index) => {
+        const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `page-${index + 1}.svg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        logMessage(`Page ${index + 1} SVG downloaded.`);
+      });
+      logMessage('All SVG files have been downloaded.');
+    });
+  </script>
 </body>
 </html>
