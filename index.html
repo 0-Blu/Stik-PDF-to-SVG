@@ -71,9 +71,16 @@
           svg.setAttribute('width', viewport.width);
           svg.setAttribute('height', viewport.height);
 
+          // Get operator list and validate
+          const operatorList = await page.getOperatorList();
+          if (!operatorList || !operatorList.fnArray) {
+            logMessage(`Error: Invalid operator list for page ${pageNum}. Skipping page.`);
+            continue;
+          }
+
           // Correct instantiation of SVGGraphics
           const svgGfx = new pdfjsLib.SVGGraphics(page.commonObjs, page.objs);
-          const svgElement = await svgGfx.getSVG(page.getOperatorList(), viewport);
+          const svgElement = await svgGfx.getSVG(operatorList, viewport);
           svg.appendChild(svgElement);
 
           outputDiv.appendChild(svg);
