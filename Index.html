@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF to SVG Converter</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body>
+  <h1>PDF to SVG Converter</h1>
+  <input type="file" id="pdfInput" accept=".pdf">
+  <div id="output"></div>
+
+  <script>
+    document.getElementById('pdfInput').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (file && file.type === 'application/pdf') {
+        const pdfData = new Uint8Array(await file.arrayBuffer());
+        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+        const outputDiv = document.getElementById('output');
+        outputDiv.innerHTML = ''; // Clear previous output
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 1.5 });
+
+          // Create SVG element
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('width', viewport.width);
+          svg.setAttribute('height', viewport.height);
+
+          const svgGfx = pdfjsLib.SVGGraphics(page.commonObjs, page.objs);
+          const svgElement = await svgGfx.getSVG(page.getOperatorList(), viewport);
+          svg.appendChild(svgElement);
+
+          // Add SVG to the output
+          const container = document.createElement('div');
+          container.appendChild(svg);
+
+          // Add download button
+          const downloadButton = document.createElement('button');
+          downloadButton.innerText = `Download Page ${pageNum}`;
+          downloadButton.addEventListener('click', () => {
+            const svgBlob = new Blob([svg.outerHTML], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `page-${pageNum}.svg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          });
+
+          container.appendChild(downloadButton);
+          outputDiv.appendChild(container);
+        }
+      } else {
+        alert('Please upload a valid PDF file.');
+      }
+    });
+  </script>
+</body>
+</html>
